@@ -31,80 +31,152 @@ local bossFarm = false
 local isBossActive = false
 local selectedBosses = {}
 
---// ========== ระบบพับ UI (PC + มือถือ) ========== --
+--// ========== ระบบพับ UI (ปรับปรุงใหม่) ========== --
 local uiVisible = true
+local uiContainer = nil
 
--- หา UI Container
-local function findUIContainer()
-    task.wait(1)
-    for _, gui in pairs(player.PlayerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and not gui.Name:match("Roblox") then
-            if gui:FindFirstChild("Main") or gui:FindFirstChild("Container") or 
-               gui.Name:match("UI") or gui.Name:match("Lib") then
-                return gui
-            end
-        end
-    end
-    for i = #player.PlayerGui:GetChildren(), 1, -1 do
-        local gui = player.PlayerGui:GetChildren()[i]
-        if gui:IsA("ScreenGui") and not gui.Name:match("Roblox") then
-            return gui
+-- รอให้ UI โหลดเสร็จก่อน
+task.wait(2)
+
+-- หา UI แบบละเอียด
+print("🔍 กำลังหา UI...")
+for _, gui in pairs(player.PlayerGui:GetChildren()) do
+    if gui:IsA("ScreenGui") then
+        print("พบ ScreenGui:", gui.Name)
+        -- ลองหาทุก ScreenGui ที่ไม่ใช่ของ Roblox
+        if not gui.Name:match("Roblox") and not gui.Name:match("Chat") and 
+           not gui.Name:match("Backpack") and not gui.Name:match("Health") then
+            uiContainer = gui
+            print("✅ เลือก UI:", gui.Name)
+            break
         end
     end
 end
 
-local uiContainer = findUIContainer()
+-- ถ้ายังไม่เจอ ลองหาแบบอื่น
+if not uiContainer then
+    for i = #player.PlayerGui:GetChildren(), 1, -1 do
+        local gui = player.PlayerGui:GetChildren()[i]
+        if gui:IsA("ScreenGui") and not gui.Name:match("Roblox") then
+            uiContainer = gui
+            print("✅ เลือก UI (fallback):", gui.Name)
+            break
+        end
+    end
+end
 
--- สร้างปุ่มพับ UI สำหรับมือถือ
+if uiContainer then
+    print("🎯 UI ที่จะซ่อน:", uiContainer:GetFullName())
+else
+    warn("❌ ไม่เจอ UI!")
+end
+
+-- สร้างปุ่มพับ UI
 local toggleButton = Instance.new("ScreenGui")
-toggleButton.Name = "ToggleUI"
+toggleButton.Name = "ToggleUIButton"
 toggleButton.ResetOnSpawn = false
 toggleButton.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+toggleButton.IgnoreGuiInset = true
 toggleButton.Parent = player.PlayerGui
 
 local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 60, 0, 60)
-button.Position = UDim2.new(1, -70, 0, 10) -- มุมขวาบน
-button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+button.Name = "ToggleBtn"
+button.Size = UDim2.new(0, 70, 0, 70)
+button.Position = UDim2.new(0, 10, 0, 100) -- ซ้ายบน (ไม่ให้ชนกับของเกม)
+button.AnchorPoint = Vector2.new(0, 0)
+button.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 button.BorderSizePixel = 0
-button.Text = "UI"
+button.Text = "📱"
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.TextSize = 20
+button.TextSize = 28
 button.Font = Enum.Font.GothamBold
+button.ZIndex = 999999
 button.Parent = toggleButton
 
 -- ทำให้มน
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
+corner.CornerRadius = UDim.new(0, 15)
 corner.Parent = button
 
 -- เงา
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(0, 255, 127)
-stroke.Thickness = 2
+stroke.Thickness = 3
 stroke.Parent = button
 
--- ฟังก์ชันพับ UI
+-- Text สถานะ
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0.3, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.7, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "ON"
+statusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+statusLabel.TextSize = 14
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.ZIndex = 999999
+statusLabel.Parent = button
+
+-- ฟังก์ชันพับ UI (ปรับปรุงใหม่)
 local function toggleUI()
     uiVisible = not uiVisible
+    
+    print("🔄 Toggle UI:", uiVisible and "SHOW" or "HIDE")
+    
     if uiContainer then
         uiContainer.Enabled = uiVisible
+        print("✅ UI Enabled:", uiContainer.Enabled)
+    else
+        -- ลองหาใหม่อีกครั้ง
+        for _, gui in pairs(player.PlayerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui ~= toggleButton and 
+               not gui.Name:match("Roblox") and not gui.Name:match("Toggle") then
+                gui.Enabled = uiVisible
+            end
+        end
     end
     
-    -- เปลี่ยนสีปุ่ม
+    -- อัพเดทสี
     if uiVisible then
-        stroke.Color = Color3.fromRGB(0, 255, 127) -- เขียว
-        button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        stroke.Color = Color3.fromRGB(0, 255, 127)
+        button.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        statusLabel.Text = "ON"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
     else
-        stroke.Color = Color3.fromRGB(255, 50, 50) -- แดง
+        stroke.Color = Color3.fromRGB(255, 50, 50)
         button.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+        statusLabel.Text = "OFF"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
     end
 end
 
-button.MouseButton1Click:Connect(toggleUI)
+-- เชื่อมกับปุ่ม (ใช้ทั้ง Activated และ MouseButton1Click)
+button.Activated:Connect(function()
+    print("👆 ปุ่มถูกกด (Activated)")
+    toggleUI()
+end)
 
--- ระบบลาก (สำหรับมือถือ)
-local dragging, dragInput, dragStart, startPos
+button.MouseButton1Click:Connect(function()
+    print("👆 ปุ่มถูกกด (MouseButton1Click)")
+    toggleUI()
+end)
+
+-- ระบบลากปุ่ม (ปรับปรุง)
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    if dragging and startPos then
+        local delta = input.Position - dragStart
+        button.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end
 
 button.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or 
@@ -130,23 +202,20 @@ end)
 
 UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        button.Position = UDim2.new(
-            startPos.X.Scale, 
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale, 
-            startPos.Y.Offset + delta.Y
-        )
+        update(input)
     end
 end)
 
--- Keybind สำหรับ PC (Right Ctrl)
+-- Keybind PC (Right Ctrl)
 UIS.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl then
+        print("⌨️ Right Ctrl กด")
         toggleUI()
     end
 end)
+
+print("✅ ปุ่มพับ UI สร้างเสร็จแล้ว!")
 
 --// ========== จบระบบพับ UI ========== --
 
@@ -631,7 +700,8 @@ saveConfig()
 end)
 
 --================ SETTINGS TAB =================--
-settingsTab:Label("🎮 Press Right Ctrl or UI Button to Toggle")
+settingsTab:Label("📱 กดปุ่มมุมซ้ายบนเพื่อพับ UI")
+settingsTab:Label("⌨️ PC: กด Right Ctrl")
 
 -- Farm Speed
 local speedOptions = {0.25, 0.5, 0.75, 1}
