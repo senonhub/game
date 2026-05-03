@@ -139,7 +139,7 @@ if promptGui and promptGui:FindFirstChild("promptOverlay") then
     end)
 end
 
---// ⚫ BLACK SCREEN OVERLAY (ไม่บัง UI)
+--// ⚫ BLACK SCREEN OVERLAY (UI อยู่บนสุด)
 local blackScreenGui = nil
 local function createBlackScreen()
     if blackScreenGui then return end
@@ -147,7 +147,7 @@ local function createBlackScreen()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BlackScreenOverlay"
     screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder = 0  -- ต่ำสุด
     screenGui.Parent = CoreGui
     
     local blackFrame = Instance.new("Frame")
@@ -157,11 +157,10 @@ local function createBlackScreen()
     blackFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     blackFrame.BackgroundTransparency = 0
     blackFrame.BorderSizePixel = 0
-    blackFrame.ZIndex = 1  -- ต่ำกว่า UI
     blackFrame.Parent = screenGui
     
     blackScreenGui = screenGui
-    print("⚫ Black Screen เปิดแล้ว (UI ยังเห็นได้)")
+    print("⚫ Black Screen เปิดแล้ว (UI อยู่บนสุด)")
 end
 
 local function removeBlackScreen()
