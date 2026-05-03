@@ -214,7 +214,9 @@ local function sendDiscordReport()
     if not discordReportEnabled or #itemsCollected == 0 then return end
     
     local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-    local message = "👤 **Character:** " .. currentCharacter .. "\n"
+    local discordUserId = "670602737376952347"
+    local message = "<@" .. discordUserId .. ">\n"
+    message = message .. "👤 **Character:** " .. currentCharacter .. "\n"
     message = message .. "📦 **Items Collected:**\n"
     
     -- สรุป items
@@ -232,7 +234,7 @@ local function sendDiscordReport()
     
     pcall(function()
         HttpService:PostAsync(discordWebhookUrl, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
-        print("✅ ส่ง Discord สำเร็จ!")
+        print("✅ ส่ง Discord สำเร็จ! ส่งไป " .. currentCharacter)
     end)
     
     itemsCollected = {}  -- รีเซ็ต
@@ -729,9 +731,11 @@ end)
 task.spawn(function()
     while true do
         task.wait(5)
-        if discordReportEnabled then
+        if discordReportEnabled and isRunning then  -- เฉพาะเมื่อ Auto Farm เปิด
             trackInventoryChanges()  -- ✅ เช็ค inventory ทุก 5 วิ
-            sendDiscordReport()
+            if #itemsCollected > 0 then
+                sendDiscordReport()
+            end
         end
     end
 end)
