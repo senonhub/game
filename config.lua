@@ -42,6 +42,7 @@ local autoRejoin = false
 local bossFarm = false
 local isBossActive = false
 local selectedBosses = {}
+local blackScreenEnabled = false  -- ตั้งค่า black screen
 
 --// WEAPON FARM
 local switchDelay = 0.5
@@ -87,7 +88,8 @@ local function saveConfig()
         farmSpeed = farmSpeed,
         islands = selectedIslands,
         bossFarm = bossFarm,  
-        bosses = selectedBosses  
+        bosses = selectedBosses,
+        blackScreen = blackScreenEnabled  -- เก็บ black screen setting
     }  
     writefile(configFile, HttpService:JSONEncode(data))
     print("✅ บันทึก config สำหรับ: " .. currentCharacter)
@@ -105,6 +107,7 @@ local function loadConfig()
     weaponFarm = data.weapon or false
     autoRejoin = data.rejoin or false
     farmSpeed = data.farmSpeed or 0.25
+    blackScreenEnabled = data.blackScreen or false  -- โหลด black screen
     
     if data.islands then
         for k,v in pairs(data.islands) do
@@ -134,6 +137,37 @@ if promptGui and promptGui:FindFirstChild("promptOverlay") then
             TeleportService:Teleport(game.PlaceId, player)
         end
     end)
+end
+
+--// ⚫ BLACK SCREEN OVERLAY
+local blackScreenGui = nil
+local function createBlackScreen()
+    if blackScreenGui then return end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BlackScreenOverlay"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = CoreGui
+    
+    local blackFrame = Instance.new("Frame")
+    blackFrame.Name = "BlackFrame"
+    blackFrame.Size = UDim2.new(1, 0, 1, 0)
+    blackFrame.Position = UDim2.new(0, 0, 0, 0)
+    blackFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    blackFrame.BackgroundTransparency = 0
+    blackFrame.BorderSizePixel = 0
+    blackFrame.Parent = screenGui
+    
+    blackScreenGui = screenGui
+    print("⚫ Black Screen เปิดแล้ว")
+end
+
+local function removeBlackScreen()
+    if blackScreenGui then
+        blackScreenGui:Destroy()
+        blackScreenGui = nil
+        print("⚪ Black Screen ปิดแล้ว")
+    end
 end
 
 --// HIDE WORLD
@@ -487,9 +521,15 @@ autoFarmToggle = mainTab:Toggle('Auto Farm', isRunning, function(state)
             end  
         end  
 
-        if hideEnabled then startHide() end  
+        if hideEnabled then startHide() end
+        -- ⚫ เปิด Black Screen ถ้าเปิด Auto Farm และ Black Screen ถูกเปิด
+        if blackScreenEnabled then
+            createBlackScreen()
+        end
     else  
-        stopHide()  
+        stopHide()
+        -- ⚫ ปิด Black Screen เมื่อปิด Auto Farm
+        removeBlackScreen()
     end
 end)
 
@@ -529,6 +569,20 @@ hideToggle = settingsTab:Toggle('Hide World', hideEnabled, function(state)
     if not state then stopHide() end
 end)
 
+-- ⚫ Black Screen Toggle
+local blackScreenToggle = settingsTab:Toggle('Black Screen (ลดสเปค)', blackScreenEnabled, function(state)
+    blackScreenEnabled = state
+    saveConfig()
+    -- ถ้า Auto Farm กำลังเปิด ให้เปลี่ยน Black Screen ทันที
+    if isRunning then
+        if state then
+            createBlackScreen()
+        else
+            removeBlackScreen()
+        end
+    end
+end)
+
 -- Auto Rejoin
 rejoinToggle = settingsTab:Toggle('Auto Rejoin', autoRejoin, function(state)
     autoRejoin = state
@@ -564,6 +618,7 @@ task.delay(0.5, function()
     if rejoinToggle and rejoinToggle.Set then rejoinToggle:Set(autoRejoin) end
     if weaponToggle and weaponToggle.Set then weaponToggle:Set(weaponFarm) end
     if farmSpeedDropdown and farmSpeedDropdown.Set then farmSpeedDropdown:Set(farmSpeed) end
+    if blackScreenToggle and blackScreenToggle.Set then blackScreenToggle:Set(blackScreenEnabled) end
 
     local selectedList = {}  
     for name, v in pairs(selectedIslands) do  
