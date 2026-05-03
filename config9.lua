@@ -427,12 +427,7 @@ local Islands = {
     {  
         name="Jungle Island",  
         remoteName="Jungle",  
-        farmPoints={CFrame.new(-566,0,402)}  
-    },  
-    {  
-        name="Starter Island",  
-        remoteName="Starter",  
-        farmPoints={CFrame.new(177,11,-159)}  
+        farmPoints={CFrame.new(-566,0,402)}
     },
     {
         name = "Bizarre",
