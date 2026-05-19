@@ -613,11 +613,11 @@ for _, v in ipairs(Islands) do
     end
 end
 
---// AUTO EQUIP
+--// AUTO EQUIP (ทำงานเฉพาะตอน weaponFarm เปิด)
 task.spawn(function()
     while true do
         task.wait(0.3)
-        if isRunning or isBossActive then
+        if (isRunning or isBossActive) and weaponFarm then
             local char = player.Character
             local backpack = player:FindFirstChild("Backpack")
             if char and backpack then
@@ -631,20 +631,27 @@ task.spawn(function()
     end
 end)
 
---// SPAM ATTACK KEY
+--// SPAM ATTACK KEY (ใช้ slot + key ที่เลือก)
 task.spawn(function()
     while true do
         task.wait(0.5)
         if isRunning or isBossActive then
-            -- กด slot ที่เลือกก่อน
-            local slot = slotMap[farmSlot] or Enum.KeyCode.One
-            VirtualInputManager:SendKeyEvent(true, slot, false, game)
-            VirtualInputManager:SendKeyEvent(false, slot, false, game)
-            task.wait(0.05)
-            -- กด attack key ที่เลือก
-            local key = keyMap[farmAttackKey] or Enum.KeyCode.X
-            VirtualInputManager:SendKeyEvent(true, key, false, game)
-            VirtualInputManager:SendKeyEvent(false, key, false, game)
+            local isSlot = (farmAttackKey == "1" or farmAttackKey == "2" or farmAttackKey == "3")
+            if isSlot then
+                -- ถ้าเลือก slot → กด slot นั้นเลย
+                local slot = slotMap[farmAttackKey] or Enum.KeyCode.One
+                VirtualInputManager:SendKeyEvent(true, slot, false, game)
+                VirtualInputManager:SendKeyEvent(false, slot, false, game)
+            else
+                -- ถ้าเลือก Z X C V F → กด slot ที่เลือกก่อน แล้วค่อยกด skill
+                local slot = slotMap[farmSlot] or Enum.KeyCode.One
+                VirtualInputManager:SendKeyEvent(true, slot, false, game)
+                VirtualInputManager:SendKeyEvent(false, slot, false, game)
+                task.wait(0.05)
+                local key = keyMap[farmAttackKey] or Enum.KeyCode.X
+                VirtualInputManager:SendKeyEvent(true, key, false, game)
+                VirtualInputManager:SendKeyEvent(false, key, false, game)
+            end
         end
     end
 end)
@@ -725,29 +732,13 @@ autoFarmToggle = mainTab:Toggle('Auto Farm', isRunning, function(state)
     isRunning = state
     saveConfig()
 
-    if state then  
-        local char = player.Character  
-        if char then  
-            local hasWeapon = false  
-            for _, v in pairs(char:GetChildren()) do  
-                if v:IsA("Tool") and v.Name == weaponName then  
-                    hasWeapon = true  
-                    break  
-                end  
-            end  
-            if not hasWeapon then  
-                equipWeaponSafe(weaponName)  
-            end  
-        end  
-
+    if state then
         if hideEnabled then startHide() end
-        -- ⚫ เปิด Black Screen ถ้าเปิด Auto Farm และ Black Screen ถูกเปิด
         if blackScreenEnabled then
             createBlackScreen()
         end
     else  
         stopHide()
-        -- ⚫ ปิด Black Screen เมื่อปิด Auto Farm
         removeBlackScreen()
     end
 end)
@@ -770,14 +761,14 @@ local leverToggle = mainTab:Toggle('Auto Pull Lever 🔴', autoPullLever, functi
 end)
 
 -- Attack Key Dropdown
-local attackKeyDropdown = mainTab:Dropdown('Attack Key', {"Z", "X", "C", "V", "F"}, farmAttackKey, function(val)
+local attackKeyDropdown = mainTab:Dropdown('Attack Key', {"1", "2", "3", "Z", "X", "C", "V", "F"}, farmAttackKey, function(val)
     farmAttackKey = val
     saveConfig()
     print("🎮 เปลี่ยน Attack Key เป็น: " .. val)
 end)
 
--- Farm Slot Dropdown
-local farmSlotDropdown = mainTab:Dropdown('Farm Slot', {"1", "2", "3"}, farmSlot, function(val)
+-- Farm Slot Dropdown (แสดงเฉพาะตอนเลือก Z X C V F)
+local farmSlotDropdown = mainTab:Dropdown('Farm Slot (สำหรับ skill)', {"1", "2", "3"}, farmSlot, function(val)
     farmSlot = val
     saveConfig()
     print("🎰 เปลี่ยน Farm Slot เป็น: " .. val)
