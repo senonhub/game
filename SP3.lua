@@ -45,6 +45,8 @@ local selectedBosses = {}
 local blackScreenEnabled = false  -- ตั้งค่า black screen
 local discordReportEnabled = false  -- ตั้งค่า Discord report
 local autoPullLever = false  -- ตั้งค่า Auto Pull Lever
+local farmAttackKey = "X"  -- ปุ่มกดตอนฟาร์ม
+local farmSlot = "1"  -- สล็อตตอนฟาร์ม
 local itemsCollected = {}  -- เก็บ items ที่ได้
 local discordWebhookUrl = "https://discord.com/api/webhooks/1500473133038047407/pP5P8Q1lDQVebeWtiuNS7vZ1DUUNXZcSjldmFmUUgMXqu4yWnYdo4ef0E6gcSjopydN0"
 
@@ -219,7 +221,9 @@ local function saveConfig()
         bosses = selectedBosses,
         blackScreen = blackScreenEnabled,  -- เก็บ black screen setting
         discordReport = discordReportEnabled,  -- เก็บ discord setting
-        autoPullLever = autoPullLever  -- เก็บ auto pull lever setting
+        autoPullLever = autoPullLever,  -- เก็บ auto pull lever setting
+        farmAttackKey = farmAttackKey,  -- เก็บปุ่มกดตอนฟาร์ม
+        farmSlot = farmSlot             -- เก็บสล็อตตอนฟาร์ม
     }  
     writefile(configFile, HttpService:JSONEncode(data))
     print("✅ บันทึก config สำหรับ: " .. currentCharacter)
@@ -240,6 +244,8 @@ local function loadConfig()
     blackScreenEnabled = data.blackScreen or false  -- โหลด black screen
     discordReportEnabled = data.discordReport or false  -- โหลด discord
     autoPullLever = data.autoPullLever or false  -- โหลด auto pull lever
+    farmAttackKey = data.farmAttackKey or "X"    -- โหลดปุ่มกดตอนฟาร์ม
+    farmSlot = data.farmSlot or "1"              -- โหลดสล็อตตอนฟาร์ม
     
     if data.islands then
         for k,v in pairs(data.islands) do
@@ -368,7 +374,8 @@ task.spawn(function()
     local index = 1
     while true do
         if weaponFarm then
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+            local slot = slotMap[farmSlot] or Enum.KeyCode.One
+            VirtualInputManager:SendKeyEvent(false, slot, false, game)
             if equipRemote and weapons[index] then
                 pcall(function() equipWeaponSafe(weapons[index]) end)
             end
@@ -599,13 +606,32 @@ task.spawn(function()
     end
 end)
 
---// SPAM X
+--// KEY MAP
+local keyMap = {
+    ["1"] = Enum.KeyCode.One,
+    ["2"] = Enum.KeyCode.Two,
+    ["3"] = Enum.KeyCode.Three,
+    ["Z"] = Enum.KeyCode.Z,
+    ["X"] = Enum.KeyCode.X,
+    ["C"] = Enum.KeyCode.C,
+    ["V"] = Enum.KeyCode.V,
+    ["F"] = Enum.KeyCode.F,
+}
+
+local slotMap = {
+    ["1"] = Enum.KeyCode.One,
+    ["2"] = Enum.KeyCode.Two,
+    ["3"] = Enum.KeyCode.Three,
+}
+
+--// SPAM ATTACK KEY
 task.spawn(function()
     while true do
         task.wait(0.5)
         if isRunning or isBossActive then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+            local key = keyMap[farmAttackKey] or Enum.KeyCode.X
+            VirtualInputManager:SendKeyEvent(true, key, false, game)
+            VirtualInputManager:SendKeyEvent(false, key, false, game)
         end
     end
 end)
@@ -730,6 +756,20 @@ local leverToggle = mainTab:Toggle('Auto Pull Lever 🔴', autoPullLever, functi
     end
 end)
 
+-- Attack Key Dropdown
+local attackKeyDropdown = mainTab:Dropdown('Attack Key', {"Z", "X", "C", "V", "F"}, farmAttackKey, function(val)
+    farmAttackKey = val
+    saveConfig()
+    print("🎮 เปลี่ยน Attack Key เป็น: " .. val)
+end)
+
+-- Farm Slot Dropdown
+local farmSlotDropdown = mainTab:Dropdown('Farm Slot', {"1", "2", "3"}, farmSlot, function(val)
+    farmSlot = val
+    saveConfig()
+    print("🎰 เปลี่ยน Farm Slot เป็น: " .. val)
+end)
+
 -- Islands selection
 local islandNames = {}
 for _, v in ipairs(Islands) do table.insert(islandNames, v.name) end
@@ -820,6 +860,8 @@ task.delay(0.5, function()
     if rejoinToggle and rejoinToggle.Set then rejoinToggle:Set(autoRejoin) end
     if weaponToggle and weaponToggle.Set then weaponToggle:Set(weaponFarm) end
     if leverToggle and leverToggle.Set then leverToggle:Set(autoPullLever) end
+    if attackKeyDropdown and attackKeyDropdown.Set then attackKeyDropdown:Set(farmAttackKey) end
+    if farmSlotDropdown and farmSlotDropdown.Set then farmSlotDropdown:Set(farmSlot) end
     if farmSpeedDropdown and farmSpeedDropdown.Set then farmSpeedDropdown:Set(farmSpeed) end
     if blackScreenToggle and blackScreenToggle.Set then blackScreenToggle:Set(blackScreenEnabled) end
     if discordToggle and discordToggle.Set then discordToggle:Set(discordReportEnabled) end
