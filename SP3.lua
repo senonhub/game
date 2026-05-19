@@ -47,6 +47,24 @@ local discordReportEnabled = false  -- ตั้งค่า Discord report
 local autoPullLever = false  -- ตั้งค่า Auto Pull Lever
 local farmAttackKey = "X"  -- ปุ่มกดตอนฟาร์ม
 local farmSlot = "1"  -- สล็อตตอนฟาร์ม
+
+--// KEY MAP (ต้องอยู่หลัง settings)
+local keyMap = {
+    ["1"] = Enum.KeyCode.One,
+    ["2"] = Enum.KeyCode.Two,
+    ["3"] = Enum.KeyCode.Three,
+    ["Z"] = Enum.KeyCode.Z,
+    ["X"] = Enum.KeyCode.X,
+    ["C"] = Enum.KeyCode.C,
+    ["V"] = Enum.KeyCode.V,
+    ["F"] = Enum.KeyCode.F,
+}
+
+local slotMap = {
+    ["1"] = Enum.KeyCode.One,
+    ["2"] = Enum.KeyCode.Two,
+    ["3"] = Enum.KeyCode.Three,
+}
 local itemsCollected = {}  -- เก็บ items ที่ได้
 local discordWebhookUrl = "https://discord.com/api/webhooks/1500473133038047407/pP5P8Q1lDQVebeWtiuNS7vZ1DUUNXZcSjldmFmUUgMXqu4yWnYdo4ef0E6gcSjopydN0"
 
@@ -391,8 +409,15 @@ end)
 task.spawn(function()
     while true do
         if weaponFarm then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+            -- กด slot ที่เลือก
+            local slot = slotMap[farmSlot] or Enum.KeyCode.One
+            VirtualInputManager:SendKeyEvent(true, slot, false, game)
+            VirtualInputManager:SendKeyEvent(false, slot, false, game)
+            task.wait(fSpamDelay)
+            -- กด attack key ที่เลือก
+            local key = keyMap[farmAttackKey] or Enum.KeyCode.X
+            VirtualInputManager:SendKeyEvent(true, key, false, game)
+            VirtualInputManager:SendKeyEvent(false, key, false, game)
             task.wait(fSpamDelay)
         else
             task.wait(0.2)
@@ -606,29 +631,17 @@ task.spawn(function()
     end
 end)
 
---// KEY MAP
-local keyMap = {
-    ["1"] = Enum.KeyCode.One,
-    ["2"] = Enum.KeyCode.Two,
-    ["3"] = Enum.KeyCode.Three,
-    ["Z"] = Enum.KeyCode.Z,
-    ["X"] = Enum.KeyCode.X,
-    ["C"] = Enum.KeyCode.C,
-    ["V"] = Enum.KeyCode.V,
-    ["F"] = Enum.KeyCode.F,
-}
-
-local slotMap = {
-    ["1"] = Enum.KeyCode.One,
-    ["2"] = Enum.KeyCode.Two,
-    ["3"] = Enum.KeyCode.Three,
-}
-
 --// SPAM ATTACK KEY
 task.spawn(function()
     while true do
         task.wait(0.5)
         if isRunning or isBossActive then
+            -- กด slot ที่เลือกก่อน
+            local slot = slotMap[farmSlot] or Enum.KeyCode.One
+            VirtualInputManager:SendKeyEvent(true, slot, false, game)
+            VirtualInputManager:SendKeyEvent(false, slot, false, game)
+            task.wait(0.05)
+            -- กด attack key ที่เลือก
             local key = keyMap[farmAttackKey] or Enum.KeyCode.X
             VirtualInputManager:SendKeyEvent(true, key, false, game)
             VirtualInputManager:SendKeyEvent(false, key, false, game)
