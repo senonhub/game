@@ -565,6 +565,13 @@ local Islands = {
         farmPoints = {
             CFrame.new(-2406.064453, 23.162224, -2990.699951) * CFrame.Angles(-0.000000, -0.673786, -0.000000)
         }
+    },
+    {
+        name = "Isolation",
+        remoteName = "Isolation",
+        farmPoints = {
+            CFrame.new(6383.987793, 1414.477051, -2487.997559) * CFrame.Angles(-0.000000, -0.534983, -0.000000)
+        }
     }
 }
 
