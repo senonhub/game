@@ -289,7 +289,7 @@ end
 local lastAntiAFK = 0
 local function antiAFKTick()
     local now = os.clock()
-    if now - lastAntiAFK < 30 then return end
+    if now - lastAntiAFK < 300 then return end
     lastAntiAFK = now
 
     VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
