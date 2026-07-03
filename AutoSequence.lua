@@ -24,12 +24,7 @@ local Progress = Tab:CreateParagraph({
 
 -- ===== Settings =====
 local TWEEN_DURATION = 0.3 -- ความเร็ว tween (ยิ่งน้อยยิ่งเร็ว)
-local TARGET_CFRAME = CFrame.new(
-    -246.981857, 274.981079, 355.338745,
-    -0.397099733, -0.144510329, 0.90632695,
-    -0.342020452, 0.939692497, -2.3111701e-05,
-    -0.851665318, -0.309991539, -0.422577143
-)
+local MONSTER_NAME = "Lv32 Thief"
 
 -- ===== Helper Functions =====
 local function setStatus(text)
@@ -64,6 +59,31 @@ local function parseWaypoint(wpString)
         nums[7], nums[8], nums[9],
         nums[10], nums[11], nums[12]
     )
+end
+
+-- ฟังก์ชันหามอนเตอร์ตามชื่อ แล้วสุ่มเลือก 1 ตัว
+local function findMonsterCFrame(monsterName)
+    local candidates = {}
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == monsterName and obj:IsA("Model") then
+            local primary = obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
+            if primary then
+                table.insert(candidates, primary)
+            end
+        end
+    end
+
+    if #candidates == 0 then
+        warn("[AutoSeq] ไม่เจอมอนเตอร์ชื่อ " .. monsterName)
+        return nil
+    end
+
+    local chosen = candidates[math.random(1, #candidates)]
+    print("[AutoSeq] เจอ " .. #candidates .. " ตัว เลือกวาปไปตัวที่: " .. chosen.Parent.Name)
+
+    -- วาปไปข้าง ๆ ตัวมอน ไม่ใช่ทับตัวมัน
+    return chosen.CFrame * CFrame.new(0, 0, 5)
 end
 
 -- วาปแบบ Tween (เร็ว)
@@ -106,15 +126,15 @@ local function runSequence()
     updateProgress(1, totalSteps, "กำลังรอเริ่มต้น 3 วิ")
     task.wait(3)
 
-    -- STEP 2: วาปไปพิกัดที่กำหนด (แบบ Tween)
-    setStatus("กำลังวาป (tween)...")
-    updateProgress(2, totalSteps, "วาปไปพิกัดเป้าหมายแบบ tween")
+    -- STEP 2: วาปไปหามอนเตอร์ (แบบ Tween)
+    setStatus("กำลังหามอนเตอร์...")
+    updateProgress(2, totalSteps, "ค้นหา " .. MONSTER_NAME .. " แล้ววาปแบบ tween")
 
-    local targetCF = parseWaypoint(TARGET_WAYPOINT)
+    local targetCF = findMonsterCFrame(MONSTER_NAME)
     if targetCF then
         teleportTo(targetCF, TWEEN_DURATION)
     else
-        setStatus("Waypoint ผิดพลาด! ข้ามการวาป")
+        setStatus("ไม่เจอมอนเตอร์! ข้ามการวาป")
     end
     task.wait(0.2)
 
