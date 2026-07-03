@@ -1,36 +1,148 @@
--- ===== Auto Farm Haki (Rayfield UI) =====
+-- ===== Auto Farm Suite (Rayfield UI) =====
+-- ระบบแยกกันอิสระ: Farm Haki (sequence) กับ Farm Monster (ฟาร์มมอน)
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
 local VIM = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
 local Rayfield = loadstring(game:HttpGetAsync('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "Auto Farm Haki",
-    LoadingTitle = "Auto Farm Haki",
+    Name = "Auto Farm Suite",
+    LoadingTitle = "Auto Farm Suite",
     LoadingSubtitle = "by markxdxaxa",
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "AutoFarmHaki",
+        FolderName = "AutoFarmSuite",
         FileName = LocalPlayer.Name, -- แยก config ตาม username อัตโนมัติ
     },
 })
 
-local Tab = Window:CreateTab("Farm", 4483362458)
+-- ============================================================
+-- TAB 1: FARM HAKI (รอ 3 วิ -> วาป -> กด R -> รอ 15 วิ -> รีจอยน์)
+-- ============================================================
+local HakiTab = Window:CreateTab("Farm Haki", 4483362458)
 
--- ===== State =====
-local Settings = {
+local HakiStatus = HakiTab:CreateLabel("สถานะ: ปิดอยู่")
+local HakiProgress = HakiTab:CreateParagraph({
+    Title = "ขั้นตอนการทำงาน",
+    Content = "ยังไม่เริ่ม"
+})
+
+local HakiSettings = {
+    Enabled = false,
+    TweenDuration = 0.3,
+    TargetCFrame = CFrame.new(
+        -246.981857, 274.981079, 355.338745,
+        -0.397099733, -0.144510329, 0.90632695,
+        -0.342020452, 0.939692497, -2.3111701e-05,
+        -0.851665318, -0.309991539, -0.422577143
+    ),
+}
+
+local function hakiSetStatus(text)
+    HakiStatus:Set("สถานะ: " .. text)
+    print("[FarmHaki] " .. text)
+end
+
+local function hakiUpdateProgress(step, total, detail)
+    HakiProgress:Set({
+        Title = string.format("ขั้นตอน %d/%d", step, total),
+        Content = detail
+    })
+end
+
+local function hakiTeleportTo(targetCF, duration)
+    duration = duration or HakiSettings.TweenDuration
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    if hum then hum.PlatformStand = true end
+
+    local tween = TweenService:Create(
+        hrp,
+        TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+        { CFrame = targetCF }
+    )
+    tween:Play()
+    tween.Completed:Wait()
+
+    if hum then hum.PlatformStand = false end
+end
+
+local function hakiPressKey(keyCode)
+    VIM:SendKeyEvent(true, keyCode, false, game)
+    task.wait(0.1)
+    VIM:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function runHakiSequence()
+    local totalSteps = 4
+
+    hakiSetStatus("รอ 3 วินาที...")
+    hakiUpdateProgress(1, totalSteps, "กำลังรอเริ่มต้น 3 วิ")
+    task.wait(3)
+
+    hakiSetStatus("กำลังวาป (tween)...")
+    hakiUpdateProgress(2, totalSteps, "วาปไปพิกัดเป้าหมายแบบ tween")
+    hakiTeleportTo(HakiSettings.TargetCFrame, HakiSettings.TweenDuration)
+    task.wait(0.2)
+
+    hakiSetStatus("กำลังกดปุ่ม R...")
+    hakiUpdateProgress(3, totalSteps, "จำลองการกดปุ่ม R")
+    hakiPressKey(Enum.KeyCode.R)
+
+    hakiUpdateProgress(4, totalSteps, "นับถอยหลังก่อนรีจอยน์")
+    for i = 15, 1, -1 do
+        hakiSetStatus("รีจอยน์ในอีก " .. i .. " วิ")
+        task.wait(1)
+    end
+
+    hakiSetStatus("กำลังรีจอยน์เซิร์ฟเวอร์...")
+    task.wait(0.5)
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end
+
+HakiTab:CreateToggle({
+    Name = "เปิดใช้งาน Farm Haki",
+    CurrentValue = false,
+    Flag = "FarmHakiToggle",
+    Callback = function(value)
+        HakiSettings.Enabled = value
+        if value then
+            hakiSetStatus("เริ่มทำงาน")
+            task.spawn(runHakiSequence)
+        else
+            hakiSetStatus("ปิดอยู่")
+        end
+    end,
+})
+
+HakiTab:CreateButton({
+    Name = "รันทันที (ไม่ต้องรอ toggle)",
+    Callback = function()
+        task.spawn(runHakiSequence)
+    end
+})
+
+-- ============================================================
+-- TAB 2: FARM MONSTER (สแกนมอน -> เลือก -> วาปเข้าตี -> auto click)
+-- ============================================================
+local FarmTab = Window:CreateTab("Farm Monster", 4483362458)
+
+local FarmSettings = {
     Enabled = false,
     AutoClick = true,
-    SelectedMonster = nil,
+    SelectedMonsters = {},
     AttackDistance = 6,
     AutoSwitch = true,
     AntiAFK = true,
 }
 
-local StatusLabel = Tab:CreateLabel("สถานะ: ปิดอยู่")
+local FarmStatus = FarmTab:CreateLabel("สถานะ: ปิดอยู่")
 
--- ===== สแกนมอนสเตอร์ทั้งแมพ (รวมชื่อซ้ำเป็น 1 ตัวเลือก) =====
 local function scanMonsters()
     local names = {}
     local seen = {}
@@ -38,8 +150,8 @@ local function scanMonsters()
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
             local hum = obj:FindFirstChildOfClass("Humanoid")
-            -- ข้าม player character และมอนที่ตายแล้ว
-            if hum.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+            -- กรองเฉพาะชื่อที่ขึ้นต้นด้วย "Lv" เท่านั้น
+            if hum.Health > 0 and not Players:GetPlayerFromCharacter(obj) and obj.Name:match("^Lv") then
                 if not seen[obj.Name] then
                     seen[obj.Name] = true
                     table.insert(names, obj.Name)
@@ -52,19 +164,18 @@ local function scanMonsters()
     return names
 end
 
--- ===== Dropdown เลือกมอนสเตอร์ =====
-local MonsterDropdown = Tab:CreateDropdown({
-    Name = "เลือกมอนสเตอร์",
+local MonsterDropdown = FarmTab:CreateDropdown({
+    Name = "เลือกมอนสเตอร์ (เลือกได้หลายตัว)",
     Options = scanMonsters(),
     CurrentOption = {},
-    MultipleOptions = false,
+    MultipleOptions = true,
     Flag = "MonsterDropdown",
-    Callback = function(option)
-        Settings.SelectedMonster = option[1]
+    Callback = function(options)
+        FarmSettings.SelectedMonsters = options -- เก็บเป็น array แทนค่าเดียว
     end,
 })
 
-Tab:CreateButton({
+FarmTab:CreateButton({
     Name = "รีเฟรชรายชื่อมอนสเตอร์",
     Callback = function()
         local list = scanMonsters()
@@ -77,70 +188,69 @@ Tab:CreateButton({
     end
 })
 
--- ===== ระยะโจมตี =====
-Tab:CreateSlider({
+FarmTab:CreateSlider({
     Name = "ระยะโจมตี (studs)",
     Range = { 3, 20 },
     Increment = 1,
     CurrentValue = 6,
     Flag = "AttackDistance",
     Callback = function(value)
-        Settings.AttackDistance = value
+        FarmSettings.AttackDistance = value
     end,
 })
 
--- ===== Auto คลิก =====
-Tab:CreateToggle({
+FarmTab:CreateToggle({
     Name = "Auto คลิกโจมตี",
     CurrentValue = true,
     Flag = "AutoClickToggle",
     Callback = function(value)
-        Settings.AutoClick = value
+        FarmSettings.AutoClick = value
     end,
 })
 
--- ===== Auto-switch มอนตัวใหม่เมื่อตัวเดิมตาย/หายไปหมด =====
-Tab:CreateToggle({
+FarmTab:CreateToggle({
     Name = "Auto-switch มอนสเตอร์อัตโนมัติ",
     CurrentValue = true,
     Flag = "AutoSwitchToggle",
     Callback = function(value)
-        Settings.AutoSwitch = value
+        FarmSettings.AutoSwitch = value
     end,
 })
 
--- ===== Anti-AFK =====
-Tab:CreateToggle({
+FarmTab:CreateToggle({
     Name = "Anti-AFK",
     CurrentValue = true,
     Flag = "AntiAFKToggle",
     Callback = function(value)
-        Settings.AntiAFK = value
+        FarmSettings.AntiAFK = value
     end,
 })
 
--- ===== ปุ่มหลัก เปิด/ปิดระบบ =====
-Tab:CreateToggle({
-    Name = "Auto Farm Haki",
+FarmTab:CreateToggle({
+    Name = "เปิดใช้งาน Farm Monster",
     CurrentValue = false,
-    Flag = "AutoFarmHakiToggle",
+    Flag = "FarmMonsterToggle",
     Callback = function(value)
-        Settings.Enabled = value
-        StatusLabel:Set("สถานะ: " .. (value and "กำลังทำงาน" or "ปิดอยู่"))
+        FarmSettings.Enabled = value
+        FarmStatus:Set("สถานะ: " .. (value and "กำลังทำงาน" or "ปิดอยู่"))
     end,
 })
 
--- ===== หามอนสเตอร์ตัวที่ใกล้ที่สุดตามชื่อที่เลือก =====
-local function findTarget(name)
+local function findTarget(nameList)
+    if not nameList or #nameList == 0 then return nil end
+
     local char = LocalPlayer.Character
     if not char then return nil end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
 
+    local nameSet = {}
+    for _, n in ipairs(nameList) do nameSet[n] = true end
+
     local closest, closestDist = nil, math.huge
 
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name == name then
+        if obj:IsA("Model") and nameSet[obj.Name] then
             local hum = obj:FindFirstChildOfClass("Humanoid")
             local primary = obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart")
             if hum and hum.Health > 0 and primary then
@@ -156,7 +266,6 @@ local function findTarget(name)
     return closest
 end
 
--- ===== วาปไปด้านหลังมอน เว้นระยะตามที่ตั้ง =====
 local function moveBehindTarget(targetModel, distance)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -165,25 +274,22 @@ local function moveBehindTarget(targetModel, distance)
     local primary = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart")
     if not primary then return end
 
-    -- ตำแหน่งด้านหลังมอน (อิงทิศที่มันหันหน้าอยู่) ห่างตามระยะที่ตั้ง
     local behindPos = (primary.CFrame * CFrame.new(0, 0, distance)).Position
     local lookAtTarget = CFrame.new(behindPos, primary.Position)
 
     hrp.CFrame = lookAtTarget
 end
 
--- ===== จำลองคลิกโจมตี =====
 local function autoClickOnce()
     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
     task.wait(0.05)
     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
 end
 
--- ===== Anti-AFK: จำลองกดปุ่มเบา ๆ กันเตะออกจากเซิร์ฟเวอร์ =====
 local lastAntiAFK = 0
 local function antiAFKTick()
     local now = os.clock()
-    if now - lastAntiAFK < 30 then return end -- ทำทุก ~30 วิ พอ ไม่ถี่เกินไป
+    if now - lastAntiAFK < 30 then return end
     lastAntiAFK = now
 
     VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
@@ -191,40 +297,38 @@ local function antiAFKTick()
     VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
 end
 
--- ===== Main Loop =====
 task.spawn(function()
     while true do
-        -- Randomize delay กันดูเป็น pattern บอทชัดเกินไป (0.25 - 0.45 วิ)
         task.wait(math.random(25, 45) / 100)
 
-        if Settings.AntiAFK then
+        if FarmSettings.AntiAFK then
             antiAFKTick()
         end
 
-        if Settings.Enabled and Settings.SelectedMonster then
-            local target = findTarget(Settings.SelectedMonster)
+        if FarmSettings.Enabled and FarmSettings.SelectedMonsters and #FarmSettings.SelectedMonsters > 0 then
+            local target = findTarget(FarmSettings.SelectedMonsters)
 
             if target then
-                moveBehindTarget(target, Settings.AttackDistance)
+                moveBehindTarget(target, FarmSettings.AttackDistance)
 
-                if Settings.AutoClick then
+                if FarmSettings.AutoClick then
                     autoClickOnce()
                 end
 
-                StatusLabel:Set("สถานะ: กำลังฟาร์ม " .. Settings.SelectedMonster)
+                FarmStatus:Set("สถานะ: กำลังฟาร์ม " .. target.Name)
 
-            elseif Settings.AutoSwitch then
-                -- ไม่เจอมอนตัวที่เลือก -> ลองสลับไปมอนอื่นที่ยังอยู่ในแมพอัตโนมัติ
+            elseif FarmSettings.AutoSwitch then
+                -- ไม่เจอมอนตามที่เลือกไว้เลย -> ลองสแกนหาชื่อ Lv อื่นที่ยังเหลือแทน
                 local available = scanMonsters()
                 if #available > 0 then
-                    Settings.SelectedMonster = available[math.random(1, #available)]
-                    StatusLabel:Set("สถานะ: สลับไปฟาร์ม " .. Settings.SelectedMonster .. " แทน")
+                    FarmSettings.SelectedMonsters = { available[math.random(1, #available)] }
+                    FarmStatus:Set("สถานะ: สลับไปฟาร์ม " .. FarmSettings.SelectedMonsters[1] .. " แทน")
                 else
-                    StatusLabel:Set("สถานะ: ไม่เจอมอนเหลือในแมพเลย")
+                    FarmStatus:Set("สถานะ: ไม่เจอมอน Lv เหลือในแมพเลย")
                 end
 
             else
-                StatusLabel:Set("สถานะ: ไม่เจอ " .. Settings.SelectedMonster .. " ในแมพ")
+                FarmStatus:Set("สถานะ: ไม่เจอมอนที่เลือกไว้ในแมพ")
             end
         end
     end
