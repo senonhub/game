@@ -1,4 +1,4 @@
--- ===== Auto Sequence Script (Rayfield UI + Tween Teleport) =====
+-- ===== Auto Sequence Script (Rayfield UI + Tween Teleport + Waypoint Parser) =====
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
@@ -24,12 +24,7 @@ local Progress = Tab:CreateParagraph({
 
 -- ===== Settings =====
 local TWEEN_DURATION = 0.3 -- ความเร็ว tween (ยิ่งน้อยยิ่งเร็ว)
-local TARGET_CFRAME = CFrame.new(
-    3608.54785, -340.161682, -467.113281,
-    0, 0, -1,
-    0, 1, 0,
-    1, 0, 0
-)
+local TARGET_WAYPOINT = "WP:3608.54785, -340.161682, -467.113281, 0, 0, -1, 0, 1, 0, 1, 0, 0"
 
 -- ===== Helper Functions =====
 local function setStatus(text)
@@ -42,6 +37,28 @@ local function updateProgress(step, total, detail)
         Title = string.format("ขั้นตอน %d/%d", step, total),
         Content = detail
     })
+end
+
+-- แปลง waypoint string เป็น CFrame
+local function parseWaypoint(wpString)
+    local data = wpString:gsub("^WP:%s*", "")
+
+    local nums = {}
+    for num in data:gmatch("[-%d%.]+") do
+        table.insert(nums, tonumber(num))
+    end
+
+    if #nums < 12 then
+        warn("[AutoSeq] Waypoint string ไม่ถูกต้อง มีแค่ " .. #nums .. " ค่า (ต้องการ 12)")
+        return nil
+    end
+
+    return CFrame.new(
+        nums[1], nums[2], nums[3],
+        nums[4], nums[5], nums[6],
+        nums[7], nums[8], nums[9],
+        nums[10], nums[11], nums[12]
+    )
 end
 
 -- วาปแบบ Tween (เร็ว)
@@ -87,7 +104,13 @@ local function runSequence()
     -- STEP 2: วาปไปพิกัดที่กำหนด (แบบ Tween)
     setStatus("กำลังวาป (tween)...")
     updateProgress(2, totalSteps, "วาปไปพิกัดเป้าหมายแบบ tween")
-    teleportTo(TARGET_CFRAME, TWEEN_DURATION)
+
+    local targetCF = parseWaypoint(TARGET_WAYPOINT)
+    if targetCF then
+        teleportTo(targetCF, TWEEN_DURATION)
+    else
+        setStatus("Waypoint ผิดพลาด! ข้ามการวาป")
+    end
     task.wait(0.2)
 
     -- STEP 3: กดปุ่ม R 1 ครั้ง
