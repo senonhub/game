@@ -134,10 +134,10 @@ local FarmTab = Window:CreateTab("Farm Monster", 4483362458)
 
 local FarmSettings = {
     Enabled = false,
-    AutoClick = true,
+    AutoClick = false,
     SelectedMonsters = {},
     AttackDistance = 6,
-    AutoSwitch = true,
+    AutoSwitch = false,
     AntiAFK = true,
 }
 
