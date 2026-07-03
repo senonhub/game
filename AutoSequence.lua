@@ -24,7 +24,12 @@ local Progress = Tab:CreateParagraph({
 
 -- ===== Settings =====
 local TWEEN_DURATION = 0.3 -- ความเร็ว tween (ยิ่งน้อยยิ่งเร็ว)
-local TARGET_WAYPOINT = "WP:3608.54785, -340.161682, -467.113281, 0, 0, -1, 0, 1, 0, 1, 0, 0"
+local TARGET_CFRAME = CFrame.new(
+    -246.981857, 274.981079, 355.338745,
+    -0.397099733, -0.144510329, 0.90632695,
+    -0.342020452, 0.939692497, -2.3111701e-05,
+    -0.851665318, -0.309991539, -0.422577143
+)
 
 -- ===== Helper Functions =====
 local function setStatus(text)
