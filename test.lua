@@ -1,5 +1,5 @@
 -- ===== Auto Farm Suite (Rayfield UI) =====
--- ระบบแยกกันอิสระ: Farm Haki (sequence) กับ Farm Monster (ฟาร์มมอน)
+-- ระบบแยกกันอิสระ: Farm Haki (sequence) กับ Farm Monster (ฟาร์มมอน + Pull Mode)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
@@ -15,7 +15,7 @@ local Window = Rayfield:CreateWindow({
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "AutoFarmSuite",
-        FileName = LocalPlayer.Name, -- แยก config ตาม username อัตโนมัติ
+        FileName = LocalPlayer.Name,
     },
 })
 
@@ -120,8 +120,6 @@ HakiTab:CreateToggle({
     end,
 })
 
-local AutoRespawnEnabled = true -- ค่าเริ่มต้น, ปรับผ่าน toggle ในหน้า UI ได้
-
 HakiTab:CreateButton({
     Name = "รันทันที (ไม่ต้องรอ toggle)",
     Callback = function()
@@ -136,8 +134,10 @@ HakiTab:CreateToggle({
     Callback = function(value)
         AutoRespawnEnabled = value
     end,
-})-- ============================================================
--- TAB 2: FARM MONSTER (สแกนมอน -> เลือก -> วาปเข้าตี -> auto click)
+})
+
+-- ============================================================
+-- TAB 2: FARM MONSTER (สแกนมอน -> เลือก -> โหมดต่างๆ)
 -- ============================================================
 local FarmTab = Window:CreateTab("Farm Monster", 4483362458)
 
@@ -163,7 +163,6 @@ local function scanMonsters()
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
             local hum = obj:FindFirstChildOfClass("Humanoid")
-            -- กรองเฉพาะชื่อที่ขึ้นต้นด้วย "Lv" เท่านั้น
             if hum.Health > 0 and not Players:GetPlayerFromCharacter(obj) and obj.Name:match("^Lv") then
                 if not seen[obj.Name] then
                     seen[obj.Name] = true
@@ -184,7 +183,7 @@ local MonsterDropdown = FarmTab:CreateDropdown({
     MultipleOptions = true,
     Flag = "MonsterDropdown",
     Callback = function(options)
-        FarmSettings.SelectedMonsters = options -- เก็บเป็น array แทนค่าเดียว
+        FarmSettings.SelectedMonsters = options
     end,
 })
 
@@ -240,26 +239,6 @@ FarmTab:CreateToggle({
 })
 
 FarmTab:CreateToggle({
-    Name = "โหมดอาวุธระยะไกล (เล็ง+ยิงรอบตัว)",
-    CurrentValue = false,
-    Flag = "RangedModeToggle",
-    Callback = function(value)
-        FarmSettings.RangedMode = value
-    end,
-})
-
-FarmTab:CreateSlider({
-    Name = "ระยะยิงรอบตัว (studs)",
-    Range = { 5, 30 },
-    Increment = 1,
-    CurrentValue = 10,
-    Flag = "RangedRadius",
-    Callback = function(value)
-        FarmSettings.RangedRadius = value
-    end,
-})
-
-FarmTab:CreateToggle({
     Name = "โหมดดึงมอนมา (ยืนนิ่ง ให้มอนมาข้างหน้า)",
     CurrentValue = false,
     Flag = "PullModeToggle",
@@ -278,6 +257,7 @@ FarmTab:CreateToggle({
     end,
 })
 
+-- ===== Helper Functions =====
 local function findTarget(nameList)
     if not nameList or #nameList == 0 then return nil end
 
@@ -322,40 +302,6 @@ local function moveBehindTarget(targetModel, distance)
     hrp.CFrame = lookAtTarget
 end
 
-local function autoClickOnce()
-    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-    task.wait(0.05)
-    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-end
-
--- ===== โหมดอาวุธระยะไกล: หามอนทุกตัวในระยะรอบตัว =====
-local Camera = workspace.CurrentCamera
-
-local function getMonstersInRange(nameList, radius)
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return {} end
-
-    local nameSet = {}
-    for _, n in ipairs(nameList) do nameSet[n] = true end
-
-    local nearby = {}
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and nameSet[obj.Name] then
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            local primary = obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart")
-            if hum and hum.Health > 0 and primary then
-                local dist = (primary.Position - hrp.Position).Magnitude
-                if dist <= radius then
-                    table.insert(nearby, obj)
-                end
-            end
-        end
-    end
-    return nearby
-end
-
--- ===== โหมดดึงมอนมา (ยืนนิ่ง ให้มอนมาข้างหน้าตัวเรา) =====
 local function pullMonsterToPlayer(targetModel, distance)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -364,73 +310,13 @@ local function pullMonsterToPlayer(targetModel, distance)
     local primary = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart")
     if not primary then return end
 
-    -- ตั้งตำแหน่งมอนมาข้างหน้าตัวเรา ระยะตามที่ตั้ง
     primary.CFrame = hrp.CFrame * CFrame.new(0, 0, -distance)
 end
-    local primary = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart")
-    if not primary then return end
 
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, primary.Position)
-
-    local screenPos, onScreen = Camera:WorldToViewportPoint(primary.Position)
-    if onScreen then
-        VIM:SendMouseMoveEvent(screenPos.X, screenPos.Y, game)
-    end
-end
-
--- วนเล็ง+ยิงทุกมอนในระยะ ทีละตัวเร็ว ๆ
-local function rangedAttackNearby(nameList, radius)
-    local targets = getMonstersInRange(nameList, radius)
-    for _, mon in ipairs(targets) do
-        aimAtTarget(mon)
-        task.wait(0.05)
-        autoClickOnce()
-    end
-    return #targets
-end
-
--- ===== ตรวจจับว่าเรากำลังโดนสตันอยู่ไหม (heuristic, ไม่รู้ signal เฉพาะเกม) =====
-local baselineWalkSpeed = nil
-local lastHealth = nil
-local hitCooldownUntil = 0
-
-local function isLikelyStunned()
-    local char = LocalPlayer.Character
-    if not char then return false end
-
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-
-    -- จำค่า WalkSpeed ปกติไว้ครั้งแรก
-    if baselineWalkSpeed == nil and hum.WalkSpeed > 0 then
-        baselineWalkSpeed = hum.WalkSpeed
-    end
-
-    -- เช็ค 1: WalkSpeed ตกเป็น 0 ทั้งที่ปกติไม่ใช่ 0 -> น่าจะโดนสตัน/ร่างกายล็อก
-    if baselineWalkSpeed and baselineWalkSpeed > 0 and hum.WalkSpeed == 0 then
-        return true
-    end
-
-    -- เช็ค 2: สถานะตัวละครเป็น Physics/Ragdoll (มักเกิดตอนโดนกระเด็น/สตัน)
-    local state = hum:GetState()
-    if state == Enum.HumanoidStateType.Physics
-        or state == Enum.HumanoidStateType.Ragdoll
-        or state == Enum.HumanoidStateType.FallingDown then
-        return true
-    end
-
-    -- เช็ค 3: เพิ่งโดนตี (HP ลดกะทันหัน) -> พักการกดสกิลสั้น ๆ กันโดน stun-lock ซ้ำ
-    local currentHealth = hum.Health
-    if lastHealth and currentHealth < lastHealth then
-        hitCooldownUntil = os.clock() + 0.6 -- หน่วง 0.6 วิ หลังโดนตี ปรับได้ตรงนี้
-    end
-    lastHealth = currentHealth
-
-    if os.clock() < hitCooldownUntil then
-        return true
-    end
-
-    return false
+local function autoClickOnce()
+    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+    task.wait(0.05)
+    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
 end
 
 local lastAntiAFK = 0
@@ -444,6 +330,7 @@ local function antiAFKTick()
     VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
 end
 
+-- ===== Main Loop =====
 task.spawn(function()
     while true do
         task.wait(math.random(25, 45) / 100)
@@ -453,65 +340,44 @@ task.spawn(function()
         end
 
         if FarmSettings.Enabled and FarmSettings.SelectedMonsters and #FarmSettings.SelectedMonsters > 0 then
+            local target = findTarget(FarmSettings.SelectedMonsters)
 
-            if FarmSettings.RangedMode then
-                -- โหมดอาวุธระยะไกล: เล็ง+ยิงทุกตัวในระยะรอบตัว
-                local hitCount = rangedAttackNearby(FarmSettings.SelectedMonsters, FarmSettings.RangedRadius)
-
-                if hitCount > 0 then
-                    FarmStatus:Set("สถานะ: ยิงมอนในระยะ " .. hitCount .. " ตัว")
-                elseif FarmSettings.AutoSwitch then
-                    local available = scanMonsters()
-                    if #available > 0 then
-                        FarmSettings.SelectedMonsters = { available[math.random(1, #available)] }
-                        FarmStatus:Set("สถานะ: สลับไปฟาร์ม " .. FarmSettings.SelectedMonsters[1] .. " แทน")
-                    else
-                        FarmStatus:Set("สถานะ: ไม่เจอมอน Lv เหลือในแมพเลย")
-                    end
+            if target then
+                if FarmSettings.PullMode then
+                    -- โหมดดึงมอนมา: ยืนนิ่ง ให้มอนมาข้างหน้าตัวเรา
+                    pullMonsterToPlayer(target, FarmSettings.PullDistance)
                 else
-                    FarmStatus:Set("สถานะ: ไม่มีมอนในระยะยิง")
+                    -- โหมดเดิม: วาปเข้าไปตีระยะประชิด
+                    moveBehindTarget(target, FarmSettings.AttackDistance)
+                end
+
+                if FarmSettings.AutoClick then
+                    autoClickOnce()
+                end
+
+                FarmStatus:Set("สถานะ: กำลังฟาร์ม " .. target.Name)
+
+            elseif FarmSettings.AutoSwitch then
+                local available = scanMonsters()
+                if #available > 0 then
+                    FarmSettings.SelectedMonsters = { available[math.random(1, #available)] }
+                    FarmStatus:Set("สถานะ: สลับไปฟาร์ม " .. FarmSettings.SelectedMonsters[1] .. " แทน")
+                else
+                    FarmStatus:Set("สถานะ: ไม่เจอมอน Lv เหลือในแมพเลย")
                 end
 
             else
-                -- โหมดวาปเข้าไปใกล้กลุ่มมอน แล้วเก็บกวาดทุกตัวรอบตัวในระยะ
-                local target = findTarget(FarmSettings.SelectedMonsters)
-
-                if target then
-                    -- วาปไปด้านหลังตัวที่ใกล้ที่สุดก่อน (เหมือนเดิม)
-                    moveBehindTarget(target, FarmSettings.AttackDistance)
-                    task.wait(0.1)
-
-                    -- จากนั้นเก็บกวาดทุกตัวที่อยู่ในระยะรอบตัว
-                    if FarmSettings.AutoClick then
-                        local hitCount = rangedAttackNearby(FarmSettings.SelectedMonsters, FarmSettings.AttackDistance)
-                        FarmStatus:Set("สถานะ: ตีมอนรอบตัว " .. hitCount .. " ตัว")
-                    else
-                        FarmStatus:Set("สถานะ: กำลังฟาร์ม " .. target.Name)
-                    end
-
-                elseif FarmSettings.AutoSwitch then
-                    local available = scanMonsters()
-                    if #available > 0 then
-                        FarmSettings.SelectedMonsters = { available[math.random(1, #available)] }
-                        FarmStatus:Set("สถานะ: สลับไปฟาร์ม " .. FarmSettings.SelectedMonsters[1] .. " แทน")
-                    else
-                        FarmStatus:Set("สถานะ: ไม่เจอมอน Lv เหลือในแมพเลย")
-                    end
-
-                else
-                    FarmStatus:Set("สถานะ: ไม่เจอมอนที่เลือกไว้ในแมพ")
-                end
+                FarmStatus:Set("สถานะ: ไม่เจอมอนที่เลือกไว้ในแมพ")
             end
         end
     end
 end)
 
 -- ============================================================
--- AUTO RESPAWN: กดปุ่ม spawn เองเมื่อตัวละครตาย (เกมไม่รีให้อัตโนมัติ)
+-- AUTO RESPAWN
 -- ============================================================
-local AutoRespawnEnabled = true -- ปิด/เปิดตรงนี้ได้ หรือจะทำเป็น toggle ใน UI ก็ได้
+local AutoRespawnEnabled = true
 
--- คลิกปุ่ม GUI โดยจำลองตำแหน่งคลิกจริงบนหน้าจอ
 local function clickGuiButton(button)
     local pos = button.AbsolutePosition
     local size = button.AbsoluteSize
@@ -523,7 +389,6 @@ local function clickGuiButton(button)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
 end
 
--- สแกนหาปุ่มที่ชื่อ/ข้อความมีคำว่า spawn หรือ respawn
 local function findRespawnButton()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
@@ -548,14 +413,14 @@ local function handleCharacterDeath(char)
     hum.Died:Connect(function()
         if not AutoRespawnEnabled then return end
 
-        task.wait(1) -- รอ GUI spawn โผล่ขึ้นมาก่อน
+        task.wait(1)
 
         local btn = findRespawnButton()
         if btn then
             clickGuiButton(btn)
             print("[AutoRespawn] กดปุ่ม spawn แล้ว: " .. btn:GetFullName())
         else
-            warn("[AutoRespawn] หาปุ่ม spawn ไม่เจอ! บอกชื่อปุ่มจริงมาแก้ให้ตรงจุดได้")
+            warn("[AutoRespawn] หาปุ่ม spawn ไม่เจอ!")
         end
     end)
 end
