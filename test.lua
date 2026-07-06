@@ -1,5 +1,5 @@
 -- ===== Auto Farm Suite (Rayfield UI) =====
--- ระบบแยกกันอิสระ: Farm Haki (sequence) กับ Farm Monster (ฟาร์มมอน + Pull Mode)
+-- ระบบแยกกันอิสระ: Farm Haki (sequence) กับ Farm Monster (ฟาร์มมอน + Pull/Ranged Mode)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
@@ -11,7 +11,7 @@ local Rayfield = loadstring(game:HttpGetAsync('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Auto Farm Suite",
     LoadingTitle = "Auto Farm Suite",
-    LoadingSubtitle = "by markxdxaxa",
+    LoadingSubtitle = "by markxdxaxa (Ranged Update)",
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "AutoFarmSuite",
@@ -20,7 +20,7 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ============================================================
--- TAB 1: FARM HAKI (รอ 3 วิ -> วาป -> กด R -> รอ 15 วิ -> รีจอยน์)
+-- TAB 1: FARM HAKI
 -- ============================================================
 local HakiTab = Window:CreateTab("Farm Haki", 4483362458)
 
@@ -137,7 +137,7 @@ HakiTab:CreateToggle({
 })
 
 -- ============================================================
--- TAB 2: FARM MONSTER (สแกนมอน -> เลือก -> โหมดต่างๆ)
+-- TAB 2: FARM MONSTER (เพิ่มระบบอาวุธระยะไกล)
 -- ============================================================
 local FarmTab = Window:CreateTab("Farm Monster", 4483362458)
 
@@ -148,8 +148,9 @@ local FarmSettings = {
     AttackDistance = 6,
     AutoSwitch = true,
     AntiAFK = true,
-    RangedMode = false,
-    RangedRadius = 10,
+    RangedMode = false,       -- เปิด/ปิด โหมดระยะไกล
+    RangedRadius = 15,        -- ระยะห่างจากมอนสเตอร์ (แนวราบ/แนวดิ่ง)
+    EquipWeaponSlot = "1",    -- ปุ่มตัวเลขที่จะกดเพื่อถืออาวุธ (เช่น "1", "2")
     PullMode = false,
     PullDistance = 5,
 }
@@ -200,8 +201,10 @@ FarmTab:CreateButton({
     end
 })
 
+FarmTab:CreateSection("--- ตั้งค่าระยะประชิด / ดึงมอน ---")
+
 FarmTab:CreateSlider({
-    Name = "ระยะโจมตี (studs)",
+    Name = "ระยะโจมตีประชิด (studs)",
     Range = { 3, 20 },
     Increment = 1,
     CurrentValue = 6,
@@ -210,6 +213,49 @@ FarmTab:CreateSlider({
         FarmSettings.AttackDistance = value
     end,
 })
+
+FarmTab:CreateToggle({
+    Name = "โหมดดึงมอนมา (ยืนนิ่ง ให้มอนมาข้างหน้า)",
+    CurrentValue = false,
+    Flag = "PullModeToggle",
+    Callback = function(value)
+        FarmSettings.PullMode = value
+    end,
+})
+
+FarmTab:CreateSection("--- ตั้งค่าอาวุธระยะไกล (Ranged Mode) ---")
+
+FarmTab:CreateToggle({
+    Name = "เปิดใช้โหมดโจมตีระยะไกล (ลอยตัวยิง)",
+    CurrentValue = false,
+    Flag = "RangedModeToggle",
+    Callback = function(value)
+        FarmSettings.RangedMode = value
+    end,
+})
+
+FarmTab:CreateSlider({
+    Name = "ระยะห่างอาวุธระยะไกล (studs)",
+    Range = { 10, 50 },
+    Increment = 1,
+    CurrentValue = 15,
+    Flag = "RangedRadius",
+    Callback = function(value)
+        FarmSettings.RangedRadius = value
+    end,
+})
+
+FarmTab:CreateInput({
+    Name = "ปุ่มกดเลือกอาวุธ (เลขช่องกระเป๋า)",
+    CurrentValue = "1",
+    PlaceholderText = "1",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        FarmSettings.EquipWeaponSlot = Text
+    end,
+})
+
+FarmTab:CreateSection("--- ตั้งค่าระบบฟาร์มทั่วไป ---")
 
 FarmTab:CreateToggle({
     Name = "Auto คลิกโจมตี",
@@ -235,15 +281,6 @@ FarmTab:CreateToggle({
     Flag = "AntiAFKToggle",
     Callback = function(value)
         FarmSettings.AntiAFK = value
-    end,
-})
-
-FarmTab:CreateToggle({
-    Name = "โหมดดึงมอนมา (ยืนนิ่ง ให้มอนมาข้างหน้า)",
-    CurrentValue = false,
-    Flag = "PullModeToggle",
-    Callback = function(value)
-        FarmSettings.PullMode = value
     end,
 })
 
@@ -288,6 +325,22 @@ local function findTarget(nameList)
     return closest
 end
 
+-- ฟังก์ชันวาร์ปไปอยู่ด้านบนเป้าหมาย (เหมาะสำหรับสไนเปอร์/อาวุธระยะไกล มอนสเตอร์ตีไม่ถึง)
+local function moveAboveTarget(targetModel, distance)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local primary = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart")
+    if not primary then return end
+
+    -- ยึดตำแหน่งด้านบนหัวมอนสเตอร์ตามระยะทางที่ตั้งไว้ เพื่อให้มุมกล้องและกระสุนส่องลงมาได้ง่าย
+    local abovePos = primary.Position + Vector3.new(0, distance, 0)
+    local lookAtTarget = CFrame.new(abovePos, primary.Position)
+
+    hrp.CFrame = lookAtTarget
+end
+
 local function moveBehindTarget(targetModel, distance)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -319,6 +372,22 @@ local function autoClickOnce()
     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
 end
 
+-- ฟังก์ชันเช็คและกดถืออาวุธ
+local function equipWeapon()
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    -- ตรวจสอบว่าในตัวละครมี Tool (อาวุธ) ถููกถืออยู่ชิ้นไหนหรือไม่
+    local holdingTool = char:FindFirstChildOfClass("Tool")
+    if not holdingTool then
+        -- ถ้าไม่มี ให้กดปุ่มตัวเลขเพื่อดึงอาวุธออกมาจาก Backpack
+        local slotKey = Enum.KeyCode[FarmSettings.EquipWeaponSlot] or Enum.KeyCode.One
+        VIM:SendKeyEvent(true, slotKey, false, game)
+        task.wait(0.05)
+        VIM:SendKeyEvent(false, slotKey, false, game)
+    end
+end
+
 local lastAntiAFK = 0
 local function antiAFKTick()
     local now = os.clock()
@@ -343,11 +412,16 @@ task.spawn(function()
             local target = findTarget(FarmSettings.SelectedMonsters)
 
             if target then
-                if FarmSettings.PullMode then
-                    -- โหมดดึงมอนมา: ยืนนิ่ง ให้มอนมาข้างหน้าตัวเรา
+                -- จัดการเรื่องการถืออาวุธระยะไกลก่อนยิง
+                if FarmSettings.RangedMode then
+                    equipWeapon()
+                    -- ลอยตัวเหนือหัวมอนสเตอร์เพื่อยิงเซฟๆ
+                    moveAboveTarget(target, FarmSettings.RangedRadius)
+                elseif FarmSettings.PullMode then
+                    -- โหมดดึงมอนมาหาตัวเรา
                     pullMonsterToPlayer(target, FarmSettings.PullDistance)
                 else
-                    -- โหมดเดิม: วาปเข้าไปตีระยะประชิด
+                    -- โหมดประชิดปกติ (วาร์ปไปหลังมอน)
                     moveBehindTarget(target, FarmSettings.AttackDistance)
                 end
 
