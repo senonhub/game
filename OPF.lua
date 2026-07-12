@@ -136,7 +136,7 @@ local FarmSettings = {
     Enabled = false,
     AutoClick = false,
     SelectedMonsters = {},
-    AttackDistance = 6,
+    AttackDistance = 1,
     AutoSwitch = false,
     AntiAFK = true,
 }
