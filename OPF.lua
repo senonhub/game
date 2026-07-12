@@ -136,7 +136,7 @@ local FarmSettings = {
     Enabled = false,
     AutoClick = false,
     SelectedMonsters = {},
-    AttackDistance = 1,
+    AttackDistance = 3,
     AutoSwitch = false,
     AntiAFK = true,
 }
@@ -190,9 +190,9 @@ FarmTab:CreateButton({
 
 FarmTab:CreateSlider({
     Name = "ระยะโจมตี (studs)",
-    Range = { 3, 20 },
+    Range = { 1, 20 },
     Increment = 1,
-    CurrentValue = 6,
+    CurrentValue = 1,
     Flag = "AttackDistance",
     Callback = function(value)
         FarmSettings.AttackDistance = value
