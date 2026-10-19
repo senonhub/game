@@ -68,7 +68,7 @@ status.Text = "สถานะ: หยุด"
 status.Parent = frame
 
 -- ลาก UI ได้ด้วยเมาส์หรือจอสัมผัส
-local dragging = false
+local dragging = true
 local dragInput, dragStart, startPos
 
 title.InputBegan:Connect(function(input)
@@ -139,7 +139,7 @@ toggle.MouseButton1Click:Connect(function()
                 if not running then break end
 
                 -- ปรับความเร็วได้ตรงนี้
-                local speed = 40
+                local speed = 100
                 local distance = (root.Position - targetCF.Position).Magnitude
                 local duration = math.max(distance / speed, 0.1)
 
