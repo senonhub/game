@@ -28,6 +28,8 @@ local CFG = {
     TouchFallback  = true,                    -- ถ้าเดินถึงแล้วไม่หาย ให้ firetouchinterest ช่วย
     WalkSpeed      = nil,                     -- ใส่เลขถ้าอยากปรับความเร็ว เช่น 24
     IdleWait       = 0.5,                     -- รอเมื่อไม่มี Apple
+    AntiAfk        = true,                    -- กด Space กัน AFK
+    AntiAfkEvery   = 300,                     -- ทุกกี่วินาที
 }
 
 ------------------------------------------------------------
@@ -235,6 +237,23 @@ task.spawn(function()
             task.wait(0.5)
         end
         task.wait()
+    end
+end)
+
+-- Anti-AFK: กด Space ทุก CFG.AntiAfkEvery วินาที
+task.spawn(function()
+    local VIM = game:GetService("VirtualInputManager")
+    local last = os.clock()
+    while alive do
+        task.wait(1)
+        if CFG.AntiAfk and os.clock() - last >= CFG.AntiAfkEvery then
+            last = os.clock()
+            pcall(function()
+                VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end)
+        end
     end
 end)
 
